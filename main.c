@@ -220,10 +220,10 @@ Opcode table[256] = {
     [0x9E] = {"SAHF",0,0,0},
     [0x9F] = {"LAHF",0,0,0},
 
-    [0xA0] = {"MOV AL,",2,0,0},
-    [0xA1] = {"MOV AX,",2,0,0},
-    [0xA2] = {"MOV",2,0,1},
-    [0xA3] = {"MOV",2,0,1},
+    [0xA0] = {"MOV AL,",3,0,0},
+    [0xA1] = {"MOV AX,",3,1,0},
+    [0xA2] = {"MOV",3,0,1},
+    [0xA3] = {"MOV",3,1,1},
 
     [0xA4] = {"MOVSB",0,0,0},
     [0xA5] = {"MOVSW",0,0,0},
@@ -431,7 +431,7 @@ int decode_rm(FILE *f, uint8_t *code, int *ip,
             *(uint16_t*)(code + *ip) :
             *(uint8_t*)(code + *ip);
 
-        fprintf(f,"%X", imm);
+        fprintf(f,"%Xh", imm);
 
         *ip += word ? 2 : 1;
         break;
@@ -442,7 +442,7 @@ int decode_rm(FILE *f, uint8_t *code, int *ip,
             fprintf(f,"%s,", rm_name);
 
         uint8_t imm8 = *(uint8_t*)(code + *ip);
-        fprintf(f,"%02x", imm8);
+        fprintf(f,"%02xh", imm8);
         *ip += 1;
         break;
 
@@ -506,7 +506,7 @@ int decode_rm(FILE *f, uint8_t *code, int *ip,
         if(mod == 0 && rm == 6)
         {
             uint16_t disp = *(uint16_t*)(code + *ip);
-            fprintf(f,"%04X", disp);
+            fprintf(f,"%04Xh", disp);
             *ip += 2;
         }
         else
@@ -516,14 +516,14 @@ int decode_rm(FILE *f, uint8_t *code, int *ip,
             if(mod == 1)
             {
                 int8_t disp = *(int8_t*)(code + *ip);
-                fprintf(f,"%+d", disp);
+                fprintf(f,"%+dh", disp);
                 *ip += 1;
             }
 
             if(mod == 2)
             {
                 int16_t disp = *(int16_t*)(code + *ip);
-                fprintf(f,"%+d", disp);
+                fprintf(f,"%+dh", disp);
                 *ip += 2;
             }
         }
@@ -604,6 +604,24 @@ void writeFile(const char *filepath, uint8_t *code, int size) {
                 ip+=2;
             }
         }
+
+        if(op->modrm == 3){
+            fprintf(file,"[");
+            uint16_t v = *(uint16_t*)(code+ip);
+            fprintf(file,"%04x", v);
+            fprintf(file,"]");
+
+            if(op->direction) {
+                if(op->word)
+                    fprintf(file,",AX");
+                else
+                    fprintf(file,",AL");
+                
+            }
+            
+            ip+=2;
+        }
+        
         fprintf(file, "\n");
         
     }
