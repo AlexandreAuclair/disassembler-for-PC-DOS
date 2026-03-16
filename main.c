@@ -27,7 +27,7 @@ typedef struct {
 
 typedef struct {
     char *name;
-    uint8_t modrm;      // 0: nothing, 1: modrm value 2: immediat 3:addr
+    uint8_t modrm;      // 0: nothing, 1: modrm value 2: immediat 3:addr 4:rel16 5:seg:a16
     uint8_t word;       // 0: byte, 1: word 
     uint8_t direction;  // 0: register to register/memory, 1: r/m to reg 2: immediat to r/m 3: immediat8 to r/m 16bit 4: seg reg to r/m 5: r/m to seg reg 6: r16, m32 
                         // 7: r/m shift by 1 8: r/m shift by CL 9: only r/m
@@ -211,7 +211,7 @@ Opcode table[256] = {
     [0x98] = {"CBW",0,0,0},
     [0x99] = {"CWD",0,0,0},
 
-    [0x9A] = {"CALL",2,1,0},
+    [0x9A] = {"CALL",5,1,0},
     
     [0x9B] = {"WAIT",0,0,0},
     
@@ -311,10 +311,10 @@ Opcode table[256] = {
     [0xE6] = {"OUT",2,0,0},
     [0xE7] = {"OUT",2,1,0},
 
-    [0xE8] = {"CALL",2,1,0},
+    [0xE8] = {"CALL",4,1,0},
 
-    [0xE9] = {"JMP",2,1,0},
-    [0xEA] = {"JMP",2,1,0},
+    [0xE9] = {"JMP",4,1,0},
+    [0xEA] = {"JMP",5,1,0},
     [0xEB] = {"JMP",2,0,0},
 
     [0xEC] = {"IN AL,[DX]",0,0,0},
@@ -331,8 +331,8 @@ Opcode table[256] = {
 
     [0xF5] = {"CMC",0,0,0},
 
-    [0xF6] = {"ALU2",1,0,0},
-    [0xF7] = {"ALU2",1,1,0},
+    [0xF6] = {"ALU2",1,0,0}, // my observation make me think that MUL reg = 
+    [0xF7] = {"ALU2",1,1,0}, // ALU2 reg,SP and DIV reg = ALU2 reg,SI
 
     [0xF8] = {"CLC",0,0,0},
     [0xF9] = {"STC",0,0,0},
@@ -595,12 +595,12 @@ void writeFile(const char *filepath, uint8_t *code, int size) {
 
         if(op->modrm == 2){
             if(!op->word){
-                fprintf(file, "%02x", code[ip]);
+                fprintf(file, "%02xh", code[ip]);
                 ip++;
             }
             else{
                 uint16_t v = *(uint16_t*)(code+ip);
-                fprintf(file,"%04x", v);
+                fprintf(file,"%04xh", v);
                 ip+=2;
             }
         }
@@ -608,7 +608,7 @@ void writeFile(const char *filepath, uint8_t *code, int size) {
         if(op->modrm == 3){
             fprintf(file,"[");
             uint16_t v = *(uint16_t*)(code+ip);
-            fprintf(file,"%04x", v);
+            fprintf(file,"%04xh", v);
             fprintf(file,"]");
 
             if(op->direction) {
@@ -619,6 +619,20 @@ void writeFile(const char *filepath, uint8_t *code, int size) {
                 
             }
             
+            ip+=2;
+        }
+
+        if(op->modrm == 4){
+            uint16_t v = *(uint16_t*)(code+ip);
+            fprintf(file,"%04xh", v+ip+2);
+            ip+=2;
+        }
+
+        if(op->modrm == 5){
+            uint16_t v = *(uint16_t*)(code+ip);
+            ip+=2;
+            uint16_t v2 = *(uint16_t*)(code+ip);
+            fprintf(file,"%04xh:%04xh", v2,v);
             ip+=2;
         }
         
