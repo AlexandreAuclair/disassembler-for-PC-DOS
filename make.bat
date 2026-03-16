@@ -1,1 +1,1 @@
-gcc main.c -o disassembly.exe
+gcc -g main.c -o disassembly.exe

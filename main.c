@@ -27,7 +27,7 @@ typedef struct {
 
 typedef struct {
     char *name;
-    uint8_t modrm;      // 0: nothing, 1: modrm value 2: immediat 3:addr 4:rel16 5:seg:a16
+    uint8_t modrm;      // 0: nothing, 1: modrm value 2: immediat 3:addr 4:rel16 5:seg:a16 6: rel8
     uint8_t word;       // 0: byte, 1: word 
     uint8_t direction;  // 0: register to register/memory, 1: r/m to reg 2: immediat to r/m 3: immediat8 to r/m 16bit 4: seg reg to r/m 5: r/m to seg reg 6: r16, m32 
                         // 7: r/m shift by 1 8: r/m shift by CL 9: only r/m
@@ -158,22 +158,22 @@ Opcode table[256] = {
     [0x5E] = {"POP SI",0,0,0},
     [0x5F] = {"POP DI",0,0,0},
 
-    [0x70] = {"JO",2,0,0},
-    [0x71] = {"JNO",2,0,0},
-    [0x72] = {"JC",2,0,0},
-    [0x73] = {"JNC",2,0,0},
-    [0x74] = {"JE",2,0,0},
-    [0x75] = {"JNE",2,0,0},
-    [0x76] = {"JBE",2,0,0},
-    [0x77] = {"JA",2,0,0},
-    [0x78] = {"JS",2,0,0},
-    [0x79] = {"JNS",2,0,0},
-    [0x7A] = {"JP",2,0,0},
-    [0x7B] = {"JNP",2,0,0},
-    [0x7C] = {"JL",2,0,0},
-    [0x7D] = {"JGE",2,0,0},
-    [0x7E] = {"JLE",2,0,0},
-    [0x7F] = {"JG",2,0,0},
+    [0x70] = {"JO",6,0,0},
+    [0x71] = {"JNO",6,0,0},
+    [0x72] = {"JC",6,0,0},
+    [0x73] = {"JNC",6,0,0},
+    [0x74] = {"JE",6,0,0},
+    [0x75] = {"JNE",6,0,0},
+    [0x76] = {"JBE",6,0,0},
+    [0x77] = {"JA",6,0,0},
+    [0x78] = {"JS",6,0,0},
+    [0x79] = {"JNS",6,0,0},
+    [0x7A] = {"JP",6,0,0},
+    [0x7B] = {"JNP",6,0,0},
+    [0x7C] = {"JL",6,0,0},
+    [0x7D] = {"JGE",6,0,0},
+    [0x7E] = {"JLE",6,0,0},
+    [0x7F] = {"JG",6,0,0},
 
     [0x80] = {"ALU1",1,0,2},
     [0x81] = {"ALU1",1,1,2},
@@ -300,9 +300,9 @@ Opcode table[256] = {
     [0xDE] = {"ESC 6",0,0,0},
     [0xDF] = {"ESC 7",0,0,0},
 
-    [0xE0] = {"LOOPNZ",2,0,0},
-    [0xE1] = {"LOOPZ",2,0,0},
-    [0xE2] = {"LOOP",2,0,0},
+    [0xE0] = {"LOOPNZ",6,0,0},
+    [0xE1] = {"LOOPZ",6,0,0},
+    [0xE2] = {"LOOP",6,0,0},
 
     [0xE3] = {"JCXZ",2,0,0},
 
@@ -315,7 +315,7 @@ Opcode table[256] = {
 
     [0xE9] = {"JMP",4,1,0},
     [0xEA] = {"JMP",5,1,0},
-    [0xEB] = {"JMP",2,0,0},
+    [0xEB] = {"JMP",6,0,0},
 
     [0xEC] = {"IN AL,[DX]",0,0,0},
     [0xED] = {"IN AX,[DX]",0,0,0},
@@ -374,6 +374,50 @@ const char *ea[8] =
     "BX"
 };
 
+const char *_ALU1[8] = {
+    "ADD",
+    "OR",
+    "ADC",
+    "SBB",
+    "AND",
+    "SUB",
+    "XOR",
+    "CMP"
+};
+
+const char *_ALU2[8] = {
+    "TEST",
+    "TEST",
+    "NOT",
+    "NEG",
+    "MUL",
+    "IMUL",
+    "DIV",
+    "IDIV"
+};
+
+const char *_ROT[8] = {
+    "ROL",
+    "ROR",
+    "RCL",
+    "RCR",
+    "SHL",
+    "SHR",
+    "SAL",
+    "SAR"
+};
+
+const char *_MISC[8] = {
+    "INC",
+    "DEC",
+    "CALL",
+    "CALL",
+    "JMP",
+    "JMP",
+    "PUSH",
+    "PUSH"
+};
+
 int decode_rm(FILE *f, uint8_t *code, int *ip,
               uint8_t modrm, uint8_t word, uint8_t direction)
 {
@@ -424,21 +468,23 @@ int decode_rm(FILE *f, uint8_t *code, int *ip,
 
     case 2: /* imm -> r/m */
 
-        if(mod == 3)
+        if(mod == 3){
             fprintf(f,"%s,", rm_name);
+            uint16_t imm = word ?
+                *(uint16_t*)(code + *ip) :
+                *(uint8_t*)(code + *ip);
 
-        uint16_t imm = word ?
-            *(uint16_t*)(code + *ip) :
-            *(uint8_t*)(code + *ip);
+            fprintf(f,"%Xh", imm);
 
-        fprintf(f,"%Xh", imm);
+            *ip += word ? 2 : 1;
+        }
 
-        *ip += word ? 2 : 1;
+        
         break;
 
     case 3: /* imm8 -> r/m16 (opcode 83) */
 
-        if(mod == 3)
+        if(mod == 3){}
             fprintf(f,"%s,", rm_name);
 
         uint8_t imm8 = *(uint8_t*)(code + *ip);
@@ -499,6 +545,26 @@ int decode_rm(FILE *f, uint8_t *code, int *ip,
         break;
     }
 
+    if(mod == 0 && (rm == 0 || rm == 1 || rm == 4 || rm == 5 || rm == 6 || rm == 7)){        
+        fprintf(f, "DS:");
+        *ip+=1;
+    }
+
+    if(mod == 0 && (rm == 2 || rm == 3)){        
+        fprintf(f, "SS:");
+        *ip+=1;
+    }
+
+    if((mod == 1 || mod == 2) && (rm == 0 || rm == 1 || rm == 4 || rm == 5 || rm == 7)){        
+        fprintf(f, "DS:");
+        *ip+=1;
+    }
+
+    if((mod == 1 || mod == 2) && (rm == 2 || rm == 3 || rm == 6)){        
+        fprintf(f, "SS:");
+        *ip+=1;
+    }
+
     if(mod != 3)
     {
         fprintf(f,"[");
@@ -529,6 +595,94 @@ int decode_rm(FILE *f, uint8_t *code, int *ip,
         }
 
         fprintf(f,"]");
+
+        if(direction == 2){
+            uint16_t imm = word ?
+                *(uint16_t*)(code + *ip) :
+                *(uint8_t*)(code + *ip);
+
+            fprintf(f,",%Xh", imm);
+
+            *ip += word ? 1 : 0;
+        }
+    }
+
+    return 0;
+}
+
+int checkForGroup(FILE *f, uint8_t *code, int *ip){
+    uint8_t modrm = code[(*ip)+1];
+    uint8_t operandePlus = (modrm >> 3) & 7;
+    switch (code[*ip])
+    {
+    case 0x80:
+        fprintf(f,"%s ",_ALU1[operandePlus]);
+        return 1;
+        break;
+    case 0x81:
+        fprintf(f,"%s ",_ALU1[operandePlus]);
+        return 1;
+        break;
+    case 0x82:
+        fprintf(f,"%s ",_ALU1[operandePlus]);
+        return 1;
+        break;
+    case 0x83:
+        fprintf(f,"%s ",_ALU1[operandePlus]);
+        return 1;
+        break;
+    case 0x8C:
+        fprintf(f,"MOV ");
+        return 1;
+        break;
+    case 0x8D:
+        fprintf(f,"MOV ");
+        return 1;
+        break;
+    case 0x8F:
+        fprintf(f,"POP ");
+        return 1;
+        break;
+    case 0xC6:
+        fprintf(f,"MOV ");
+        return 1;
+        break;
+    case 0xC7:
+        fprintf(f,"MOV ");
+        return 1;
+        break;
+    case 0xD0:
+        fprintf(f,"%s ", _ROT[operandePlus]);
+        return 1;
+        break;
+    case 0xD1:
+        fprintf(f,"%s ", _ROT[operandePlus]);
+        return 1;
+        break;
+    case 0xD2:
+        fprintf(f,"%s ", _ROT[operandePlus]);
+        return 1;
+        break;
+    case 0xD3:
+        fprintf(f,"%s ", _ROT[operandePlus]);
+        return 1;
+        break;
+    case 0xF6:
+        fprintf(f,"%s ", _ALU2[operandePlus]);
+        return 1;
+        break;
+    case 0xF7:
+        fprintf(f,"%s ", _ALU2[operandePlus]);
+        return 1;
+        break;
+    case 0xFE:
+        fprintf(f,"%s ", _MISC[operandePlus]);
+        return 1;
+        break;
+    case 0xFF:
+        fprintf(f,"%s ", _MISC[operandePlus]);
+        return 1;
+        break;
     }
 
     return 0;
@@ -585,8 +739,14 @@ void writeFile(const char *filepath, uint8_t *code, int size) {
             continue;
         }
 
-        fprintf(file, "%s ", op->name);
-        ip++;
+        if(!checkForGroup(file, code, &ip)){
+            fprintf(file, "%s ", op->name);
+            ip++;
+        }
+        else{
+            ip++;
+        }
+        
         if(op->modrm == 1) {
             uint8_t modrm = code[ip];
             decode_rm(file, code, &ip, modrm, op->word, op->direction);
@@ -634,6 +794,12 @@ void writeFile(const char *filepath, uint8_t *code, int size) {
             uint16_t v2 = *(uint16_t*)(code+ip);
             fprintf(file,"%04xh:%04xh", v2,v);
             ip+=2;
+        }
+
+        if(op->modrm == 6){
+            uint8_t v = *(uint8_t*)(code+ip);
+            fprintf(file, "%04xh", ip+1+v);
+            ip++;
         }
         
         fprintf(file, "\n");
