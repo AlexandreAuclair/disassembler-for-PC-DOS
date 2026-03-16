@@ -457,11 +457,14 @@ int decode_rm(FILE *f, uint8_t *code, int *ip,
             fprintf(f,"%s,%s", rm_name, reg_name);
         else
             fprintf(f,",%s", reg_name);
+        return 1;
         break;
 
     case 1: /* r/m -> reg */
-        if(mod == 3)
+        if(mod == 3){
             fprintf(f,"%s,%s", reg_name, rm_name);
+            return 1;
+        }
         else
             fprintf(f,"%s,", reg_name);
         break;
@@ -477,8 +480,8 @@ int decode_rm(FILE *f, uint8_t *code, int *ip,
             fprintf(f,"%Xh", imm);
 
             *ip += word ? 2 : 1;
+            return 1;
         }
-
         
         break;
 
@@ -490,6 +493,7 @@ int decode_rm(FILE *f, uint8_t *code, int *ip,
         uint8_t imm8 = *(uint8_t*)(code + *ip);
         fprintf(f,"%02xh", imm8);
         *ip += 1;
+        return 1;
         break;
 
     case 4: /* seg -> r/m */
@@ -498,22 +502,26 @@ int decode_rm(FILE *f, uint8_t *code, int *ip,
             fprintf(f,"%s,%s", rm_name, reg_name);
         else
             fprintf(f,",%s", reg_name);
-
+        return 1;
         break;
 
     case 5: /* r/m -> seg */
 
-        if(mod == 3)
+        if(mod == 3){
             fprintf(f,"%s,%s", reg_name, rm_name);
+            return 1;
+        }
         else
             fprintf(f,"%s,", reg_name);
-
+        
         break;
 
     case 6: /* r16 , m32 (LES/LDS) */
 
-        if(mod == 3)
+        if(mod == 3){
             fprintf(f,"%s,%s", reg16[reg], rm_name);
+            return 1;
+        }
         else
             fprintf(f,"%s,", reg16[reg]);
 
@@ -525,7 +533,7 @@ int decode_rm(FILE *f, uint8_t *code, int *ip,
             fprintf(f,"%s,1", rm_name);
         else
             fprintf(f,",1");
-
+        return 1;
         break;
 
     case 8: /* shift by CL */
@@ -534,14 +542,15 @@ int decode_rm(FILE *f, uint8_t *code, int *ip,
             fprintf(f,"%s,CL", rm_name);
         else
             fprintf(f,",CL");
-
+        return 1;
         break;
 
     case 9: /* only r/m (INC/DEC/PUSH etc groups) */
 
-        if(mod == 3)
+        if(mod == 3){
             fprintf(f,"%s", rm_name);
-
+            return 1;
+        }
         break;
     }
 
@@ -603,7 +612,7 @@ int decode_rm(FILE *f, uint8_t *code, int *ip,
 
             fprintf(f,",%Xh", imm);
 
-            *ip += word ? 1 : 0;
+            *ip += word ? 2 : 1;
         }
     }
 
@@ -749,8 +758,8 @@ void writeFile(const char *filepath, uint8_t *code, int size) {
         
         if(op->modrm == 1) {
             uint8_t modrm = code[ip];
-            decode_rm(file, code, &ip, modrm, op->word, op->direction);
-            ip++;
+            if(decode_rm(file, code, &ip, modrm, op->word, op->direction))
+                ip++;
         }
 
         if(op->modrm == 2){
@@ -797,7 +806,7 @@ void writeFile(const char *filepath, uint8_t *code, int size) {
         }
 
         if(op->modrm == 6){
-            uint8_t v = *(uint8_t*)(code+ip);
+            int8_t v = *(int8_t*)(code+ip);
             fprintf(file, "%04xh", ip+1+v);
             ip++;
         }
